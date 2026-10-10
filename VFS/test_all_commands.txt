@@ -1,0 +1,9 @@
+ls
+cd docs
+ls am
+cd api
+cd
+cd nonexistent
+cd $USERNAME
+fake_command
+exit

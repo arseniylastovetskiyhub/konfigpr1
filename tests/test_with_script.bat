@@ -1,4 +1,4 @@
 @echo off 
-echo Тест 2: запуск со скриптом 
-python ..\src\main.py --script ..\VFS\test_script.txt 
+echo Тест: запуск со скриптом (без VFS) 
+python ..\src\main.py --script ..\VFS\test_all_commands.txt 
 pause 

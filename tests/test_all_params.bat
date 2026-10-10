@@ -1,4 +1,4 @@
 @echo off 
-echo Тест 3: запуск с --vfs и --script 
-python ..\src\main.py --vfs ..\VFS --script ..\VFS\test_script.txt 
+echo Тест 5: --vfs и --script 
+python ..\src\main.py --vfs ..\VFS\vfs_nested.zip --script ..\VFS\test_all_commands.txt 
 pause 

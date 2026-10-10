@@ -7,19 +7,22 @@
 
 ```text
 my-shell/
-├── src/
-│   ├── __init__.py       # Делает папку src модулем Python
-│   └── main.py           # Главный файл эмулятора (GUI + логика)
+── src/
+│   ├── __init__.py                # Делает папку src модулем Python
+│   └── main.py                    # Главный файл эмулятора (GUI + VFS + команды)
 ├── tests/
-│   ├── __init__.py       # Делает папку tests модулем Python
-│   └── test_all_params.bat   # Тест: запуск с обоими параметрами
-│   ├── test_with_script.bat  # Тест: запуск со скриптом
-│   ├── test_with_vfs.bat     # Тест: запуск с --vfs
+│   ├── __init__.py                # Делает папку tests модулем Python
+│   ├── test_with_vfs_minimal.bat  # Тест: минимальный VFS (1 файл)
+│   ├── test_with_vfs_files.bat    # Тест: VFS с несколькими файлами (3 файла)
+│   ├── test_with_vfs_nested.bat   # Тест: вложенный VFS (3 уровня)
+│   ├── test_with_script.bat       # Тест: запуск со скриптом
+│   └── test_all_params.bat        # Тест: --vfs + --script вместе
 ├── VFS/
-│   └── test_script.txt   # Тестовый скрипт с командами для эмулятора
-├── run.bat               # Скрипт запуска для Windows
-├── README.md             # Документация проекта
-└── .gitignore            # Список файлов, игнорируемых Git
+│   └── test_all_commands.txt      # Стартовый скрипт с командами для эмулятора
+├── run.bat                        # Скрипт запуска для Windows
+├── create_test_zips.py            # Скрипт создания тестовых ZIP-архивов
+├── README.md                      # Документация проекта
+└── .gitignore                     # Список файлов, игнорируемых Git
 ```
 
 ## Запуск
@@ -27,8 +30,9 @@ my-shell/
 Запуск делается через:
 
 ```text
-run.bat, test_with_script.bat, test_with_vfs.bat или test_all_params.bat
+run.bat, test_all_params.bat, test_with_script.bat, test_with_vfs_nested.bat, test_with_vfs_files.bat и test_with_vfs_minimal.bat
 ```
+
 
 ## Поддерживаемые команды
 

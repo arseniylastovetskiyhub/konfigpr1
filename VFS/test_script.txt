@@ -1,5 +1,0 @@
-ls
-cd $USERNAME
-ls -la
-fake_command
-echo hello
