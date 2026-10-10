@@ -1,9 +1,11 @@
 ls
+echo Привет, мир!
+echo $USERNAME
 cd docs
-ls am
-cd api
-cd
+ls
+tail readme.txt
+wc readme.txt
+tail -n 2 guide.txt
+cd ..
 cd nonexistent
-cd $USERNAME
-fake_command
 exit
