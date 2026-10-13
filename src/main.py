@@ -3,6 +3,11 @@ import zipfile
 import tkinter as tk
 import argparse
 
+DEFAULT_TAIL_LINES = 10
+MIN_ARGS_FOR_TAIL_OPTION = 3
+TAIL_OPTION_FLAG = "-n"
+EXIT_CODE_OK = 0
+
 
 def get_title():
     """Формирует заголовок окна."""
@@ -101,106 +106,126 @@ def read_file_from_vfs(cwd, path):
     return node.get("content", ""), None
 
 
+def cmd_ls(output, args, vfs, cwd):
+    """Обработчик команды ls. Возвращает (результат, cwd)."""
+    target = args[0] if args else "."
+    if target == ".":
+        node = cwd
+    else:
+        node = get_node_at(cwd, target.split("/"))
+    if node is None:
+        msg = "Ошибка: путь не найден '" + target + "'"
+        output.insert(tk.END, msg + "\n")
+        return msg, cwd
+    if node.get("type") == "file":
+        msg = "Ошибка: это файл, не папка"
+        output.insert(tk.END, msg + "\n")
+        return msg, cwd
+    children = node.get("children", node)
+    names = " ".join(sorted(children.keys()))
+    output.insert(tk.END, names + "\n")
+    return names, cwd
+
+
+def cmd_cd(output, args, vfs, cwd):
+    """Обработчик команды cd. Возвращает (результат, новый cwd)."""
+    if not args:
+        return "", cwd
+    target = args[0]
+    if target == "/":
+        output.insert(tk.END, "Переход в корень\n")
+        return "ok", vfs
+    new_cwd = get_node_at(cwd, target.split("/"))
+    if new_cwd is None:
+        msg = "Ошибка: папка не найдена '" + target + "'"
+        output.insert(tk.END, msg + "\n")
+        return msg, cwd
+    if new_cwd.get("type") == "file":
+        msg = "Ошибка: это файл, не папка"
+        output.insert(tk.END, msg + "\n")
+        return msg, cwd
+    output.insert(tk.END, "Переход в " + target + "\n")
+    return "ok", new_cwd
+
+
+def cmd_echo(output, args):
+    """Обработчик команды echo. Возвращает (текст, cwd=None)."""
+    text = " ".join(args) if args else ""
+    output.insert(tk.END, text + "\n")
+    return text, None
+
+
+def cmd_tail(output, args, cwd):
+    """Обработчик команды tail. Возвращает (результат, cwd)."""
+    if not args:
+        msg = "Ошибка: tail требует имя файла"
+        output.insert(tk.END, msg + "\n")
+        return msg, cwd
+    n_lines = DEFAULT_TAIL_LINES
+    file_path = args[-1]
+    if (len(args) >= MIN_ARGS_FOR_TAIL_OPTION
+            and args[0] == TAIL_OPTION_FLAG):
+        try:
+            n_lines = int(args[1])
+            file_path = args[2]
+        except ValueError:
+            msg = "Ошибка: неверное число строк"
+            output.insert(tk.END, msg + "\n")
+            return msg, cwd
+    content, err = read_file_from_vfs(cwd, file_path)
+    if err:
+        msg = "Ошибка: " + err
+        output.insert(tk.END, msg + "\n")
+        return msg, cwd
+    lines = content.split("\n")
+    last = lines[-n_lines:] if len(lines) > n_lines else lines
+    result = "\n".join(last)
+    output.insert(tk.END, result + "\n")
+    return result, cwd
+
+
+def cmd_wc(output, args, cwd):
+    """Обработчик команды wc. Возвращает (результат, cwd)."""
+    if not args:
+        msg = "Ошибка: wc требует имя файла"
+        output.insert(tk.END, msg + "\n")
+        return msg, cwd
+    file_path = args[0]
+    content, err = read_file_from_vfs(cwd, file_path)
+    if err:
+        msg = "Ошибка: " + err
+        output.insert(tk.END, msg + "\n")
+        return msg, cwd
+    n_lines = content.count("\n")
+    if content and not content.endswith("\n"):
+        n_lines += 1
+    n_words = len(content.split())
+    n_bytes = len(content.encode("utf-8"))
+    result = (str(n_lines) + " " + str(n_words)
+              + " " + str(n_bytes))
+    output.insert(tk.END, result + " " + file_path + "\n")
+    return result, cwd
+
+
 def run_command(output, line, vfs, cwd):
     """Выполняет команду. Возвращает (результат, новый_cwd)."""
     cmd, args = parse(line)
     if cmd is None:
         return "", cwd
-
     output.insert(tk.END, "> " + line + "\n")
-
     if cmd == "exit":
-        raise SystemExit(0)
-
+        raise SystemExit(EXIT_CODE_OK)
     if cmd == "ls":
-        target = args[0] if args else "."
-        if target == ".":
-            node = cwd
-        else:
-            node = get_node_at(cwd, target.split("/"))
-        if node is None:
-            msg = "Ошибка: путь не найден '" + target + "'"
-            output.insert(tk.END, msg + "\n")
-            return msg, cwd
-        if node.get("type") == "file":
-            msg = "Ошибка: это файл, не папка"
-            output.insert(tk.END, msg + "\n")
-            return msg, cwd
-        children = node.get("children", node)
-        names = " ".join(sorted(children.keys()))
-        output.insert(tk.END, names + "\n")
-        return names, cwd
-
+        return cmd_ls(output, args, vfs, cwd)
     if cmd == "cd":
-        if not args:
-            return "", cwd
-        target = args[0]
-        if target == "/":
-            output.insert(tk.END, "Переход в корень\n")
-            return "ok", vfs
-        new_cwd = get_node_at(cwd, target.split("/"))
-        if new_cwd is None:
-            msg = "Ошибка: папка не найдена '" + target + "'"
-            output.insert(tk.END, msg + "\n")
-            return msg, cwd
-        if new_cwd.get("type") == "file":
-            msg = "Ошибка: это файл, не папка"
-            output.insert(tk.END, msg + "\n")
-            return msg, cwd
-        output.insert(tk.END, "Переход в " + target + "\n")
-        return "ok", new_cwd
-
+        return cmd_cd(output, args, vfs, cwd)
     if cmd == "echo":
-        text = " ".join(args) if args else ""
-        output.insert(tk.END, text + "\n")
+        text, _ = cmd_echo(output, args)
         return text, cwd
-
     if cmd == "tail":
-        if not args:
-            msg = "Ошибка: tail требует имя файла"
-            output.insert(tk.END, msg + "\n")
-            return msg, cwd
-        n_lines = 10
-        file_path = args[-1]
-        if len(args) >= 3 and args[0] == "-n":
-            try:
-                n_lines = int(args[1])
-                file_path = args[2]
-            except ValueError:
-                msg = "Ошибка: неверное число строк"
-                output.insert(tk.END, msg + "\n")
-                return msg, cwd
-        content, err = read_file_from_vfs(cwd, file_path)
-        if err:
-            msg = "Ошибка: " + err
-            output.insert(tk.END, msg + "\n")
-            return msg, cwd
-        lines = content.split("\n")
-        last = lines[-n_lines:] if len(lines) > n_lines else lines
-        result = "\n".join(last)
-        output.insert(tk.END, result + "\n")
-        return result, cwd
-
+        return cmd_tail(output, args, cwd)
     if cmd == "wc":
-        if not args:
-            msg = "Ошибка: wc требует имя файла"
-            output.insert(tk.END, msg + "\n")
-            return msg, cwd
-        file_path = args[0]
-        content, err = read_file_from_vfs(cwd, file_path)
-        if err:
-            msg = "Ошибка: " + err
-            output.insert(tk.END, msg + "\n")
-            return msg, cwd
-        n_lines = content.count("\n")
-        if content and not content.endswith("\n"):
-            n_lines += 1
-        n_words = len(content.split())
-        n_bytes = len(content.encode("utf-8"))
-        result = str(n_lines) + " " + str(n_words) + " " + str(n_bytes)
-        output.insert(tk.END, result + " " + file_path + "\n")
-        return result, cwd
-
+        return cmd_wc(output, args, cwd)
     msg = "Ошибка: неизвестная команда '" + cmd + "'"
     output.insert(tk.END, msg + "\n")
     return msg, cwd
@@ -214,7 +239,6 @@ def run_script(output, script_path, vfs, cwd):
     except FileNotFoundError:
         output.insert(tk.END, "Ошибка: файл скрипта не найден\n")
         return cwd
-
     current_cwd = cwd
     for line in lines:
         clean_line = line.strip()
@@ -255,7 +279,6 @@ def print_debug(args, vfs):
 def main():
     """Точка входа в программу."""
     args = parse_args()
-
     vfs = {}
     if args.vfs:
         loaded = load_vfs_from_zip(args.vfs)
@@ -264,38 +287,27 @@ def main():
             vfs = {}
         else:
             vfs = loaded
-
     print_debug(args, vfs)
-
     window = tk.Tk()
     window.title(get_title())
-
     output = tk.Text(window, height=20, width=80)
     output.pack(padx=10, pady=10)
-
     entry = tk.Entry(window, width=80)
     entry.pack(padx=10, pady=(0, 10))
-
     cwd = vfs
-
     def on_enter(event):
         nonlocal cwd
         line = entry.get()
         entry.delete(0, tk.END)
         try:
-            result, new_cwd = run_command(
-                output, line, vfs, cwd
-            )
+            result, new_cwd = run_command(output, line, vfs, cwd)
             cwd = new_cwd
         except SystemExit:
             window.destroy()
-
     entry.bind("<Return>", on_enter)
     entry.focus_set()
-
     if args.script:
         cwd = run_script(output, args.script, vfs, cwd)
-
     window.mainloop()
 
 
